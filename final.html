@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Game</title>
+<style>
+    body {
+        background-color: black;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+
+    #canvas {
+        background-color: black;
+        border: 2px solid pink;
+    }
+
+    #score {
+        color: white;
+        font-size: 24px;
+        margin-right: 20px;
+    }
+
+    #gameOver {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 36px;
+        display: none;
+    }
+
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 10px;
+        background-color: pink;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+    <div id="game">
+        <canvas id="canvas" width="400" height="400"></canvas>
+        <div id="score">Score: 0</div>
+        <div id="gameOver">GAME OVER</div>
+        <div id="level">
+            <button id="easyButton">Easy</button>
+            <button id="mediumButton">Medium</button>
+            <button id="hardButton">Hard</button>
+        </div>
+        <button id="startButton">Start</button>
+        <button id="pauseButton" disabled>Pause</button>
+        <button id="endButton" disabled>End</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverElement = document.getElementById('gameOver');
+        const easyButton = document.getElementById('easyButton');
+        const mediumButton = document.getElementById('mediumButton');
+        const hardButton = document.getElementById('hardButton');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const endButton = document.getElementById('endButton');
+
+        const gridSize = 20;
+        let snake = [{ x: 10, y: 10 }];
+        let food = { x: 15, y: 15 };
+        let dx = 0;
+        let dy = 0;
+        let score = 0;
+        let gameLoop;
+        let isPaused = false;
+        let speed = 100; // milliseconds
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Snake
+            ctx.fillStyle = 'pink';
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+
+            // Draw Food
+            ctx.fillStyle = 'orange';
+            ctx.shadowColor = 'green';
+            ctx.shadowBlur = 10;
+            drawHeart(food.x * gridSize, food.y * gridSize, gridSize);
+
+            // Draw Score
+            scoreElement.textContent = `Score: ${score}`;
+
+            // Check if game over
+            if (isGameOver()) {
+                stopGame();
+            }
+        }
+
+        function isGameOver() {
+            const head = snake[0];
+            return (
+                head.x < 0 || head.x >= canvas.width / gridSize ||
+                head.y < 0 || head.y >= canvas.height / gridSize ||
+                snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)
+            );
+        }
+
+        function update() {
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // Check if snake eats food
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                food = generateFoodPosition();
+            } else {
+                snake.pop();
+            }
+
+            snake.unshift(head);
+        }
+
+        function generateFoodPosition() {
+            let newFoodPosition;
+            do {
+                newFoodPosition = {
+                    x: Math.floor(Math.random() * (canvas.width / gridSize)),
+                    y: Math.floor(Math.random() * (canvas.height / gridSize))
+                };
+            } while (snake.some(segment => segment.x === newFoodPosition.x && segment.y === newFoodPosition.y));
+
+            return newFoodPosition;
+        }
+
+        function drawHeart(x, y, size) {
+            ctx.beginPath();
+            ctx.moveTo(x + size / 2, y + size / 4);
+            ctx.quadraticCurveTo(x, y, x, y + size / 2);
+            ctx.quadraticCurveTo(x, y + size, x + size / 2, y + size);
+            ctx.quadraticCurveTo(x + size, y + size, x + size, y + size / 2);
+            ctx.quadraticCurveTo(x + size, y, x + size / 2, y + size / 4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function startGame() {
+            snake = [{ x: 10, y: 10 }];
+            food = generateFoodPosition();
+            dx = 1;
+            dy = 0;
+            score = 0;
+            isPaused = false;
+
+            startButton.disabled = true;
+            pauseButton.disabled = false;
+            endButton.disabled = false;
+
+            gameLoop = setInterval(() => {
+                if (!isPaused) {
+                    update();
+                    draw();
+                }
+            }, speed);
+        }
+
+        function pauseGame() {
+            isPaused = !isPaused;
+            pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        function stopGame() {
+            clearInterval(gameLoop);
+            gameOverElement.style.display = 'block';
+            startButton.disabled = false;
+            pauseButton.disabled = true;
+            endButton.disabled = true;
+        }
+
+        easyButton.addEventListener('click', () => { speed = 150; });
+        mediumButton.addEventListener('click', () => { speed = 100; });
+        hardButton.addEventListener('click', () => { speed = 50; });
+
+        document.addEventListener('keydown', event => {
+            switch (event.key) {
+                case 'ArrowUp':
+                    if (dy !== 1) {
+                        dx = 0;
+                        dy = -1;
+                    }
+                    break;
+                case 'ArrowDown':
+                    if (dy !== -1) {
+                        dx = 0;
+                        dy = 1;
+                    }
+                    break;
+                case 'ArrowLeft':
+                    if (dx !== 1) {
+                        dx = -1;
+                        dy = 0;
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (dx !== -1) {
+                        dx = 1;
+                        dy = 0;
+                    }
+                    break;
+            }
+        });
+
+        startButton.addEventListener('click', startGame);
+        pauseButton.addEventListener('click', pauseGame);
+        endButton.addEventListener('click', stopGame);
+
+        draw();
+    </script>
+</body>
+</html>
